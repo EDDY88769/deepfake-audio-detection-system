@@ -51,14 +51,13 @@
             if (user) {
                 document.getElementById('username').value = user;
                 console.log("成功將使用者填入隱藏欄位:", user);
-                // 可選：如果你希望一進網頁就自動載入歷史紀錄，可以解開下一行的註解
-                // fetchHistory();
+                
             } else {
                 alert("錯誤：偵測不到登入帳號，請重新登入！");
             }
         };
 
-        // 新增：向後端撈取歷史紀錄的函式
+        // 向後端撈取歷史紀錄的函式
         async function fetchHistory() {
             const username = document.getElementById('username').value;
             if (!username) return alert("無法查詢，帳號資訊遺失");
@@ -79,11 +78,11 @@
                     if (result.data.length === 0) {
                         tableBody.innerHTML = '<tr><td colspan="3">目前尚無上傳紀錄</td></tr>';
                     } else {
-                        // 迴圈將每筆資料轉成表格列 (tr)
+                        
                         result.data.forEach(row => {
                             const tr = document.createElement('tr');
                             
-                            // 格式化時間 (把 ISO 時間轉成人類看得懂的格式)
+                            
                             const date = new Date(row.created_at).toLocaleString('zh-TW');
                             
                             tr.innerHTML = `
@@ -94,7 +93,7 @@
                             tableBody.appendChild(tr);
                         });
                     }
-                    // 顯示表格區塊
+                    
                     document.getElementById('historyContainer').style.display = 'block';
                 } else {
                     alert("查詢失敗：" + result.message);
