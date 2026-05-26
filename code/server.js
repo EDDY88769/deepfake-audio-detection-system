@@ -15,7 +15,7 @@ const pool = mariadb.createPool({
 });
 
 const port = 3000;
-const ip = "127.0.0.1";
+const ip = "0.0.0.0";
 
 const sendResponse = (filename, statusCode, response) => {
     fs.readFile(`./html/${filename}`, (error, data) => {
@@ -108,7 +108,7 @@ const server = http.createServer(async (request, response) => {
                 }
             });
         }
-        // ==================== 分支 2：查詢歷史紀錄 (移到外面獨立) ====================
+        // ==================== 分支 2：查詢歷史紀錄  ====================
         else if (currentPath === "/get-records") {
             let body = [];
             request.on("data", (chunk) => body.push(chunk));
@@ -261,7 +261,7 @@ const server = http.createServer(async (request, response) => {
                                             if (!username) return alert("無法查詢，帳號資訊遺失");
 
                                             try {
-                                                // 發送請求給剛才我們修好的 /get-records 路由
+                                                
                                                 const response = await fetch('/get-records', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -272,7 +272,7 @@ const server = http.createServer(async (request, response) => {
                     
                                                 if (result.success) {
                                                     const tableBody = document.getElementById('historyTableBody');
-                                                    tableBody.innerHTML = ''; // 清空舊資料
+                                                    tableBody.innerHTML = ''; 
                             
                                                     if (result.data.length === 0) {
                                                         tableBody.innerHTML = '<tr><td colspan="3">目前尚無上傳紀錄</td></tr>';
@@ -284,7 +284,7 @@ const server = http.createServer(async (request, response) => {
                                                             tableBody.appendChild(tr);
                                                         });
                                                     }
-                                                    // 秀出表格
+
                                                     document.getElementById('historyContainer').style.display = 'block';
                                                 } else {
                                                     alert("查詢失敗：" + result.message);
