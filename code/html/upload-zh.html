@@ -1,0 +1,50 @@
+<!-- HTML 部分 -->
+<input type="file" id="audioPicker" accept="audio/*">
+<input type="hidden" id="username" value="">
+<button onclick="upload()">開始上傳並辨識</button>
+
+<!-- JavaScript 部分 -->
+<script>
+    // 頁面一打開，就從網址抓 user 參數
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const user = urlParams.get('user');
+        if (user) {
+            document.getElementById('username').value = user;
+            console.log("登入者身分已確認:", user);
+        } else {
+            console.error("未偵測到登入帳號");
+        }
+    };
+
+    async function upload() {
+        const username = document.getElementById('username').value;
+        const fileInput = document.getElementById('audioPicker');
+
+        if (!username) {
+            alert("請重新登入，系統找不到您的帳號資訊");
+            return;
+        }
+        if (fileInput.files.length === 0) {
+            alert("請選擇音檔");
+            return;
+        }
+
+        const formData = new FormData();
+        // 順序：先放文字欄位，再放檔案
+        formData.append('username', username);
+        formData.append('audio', fileInput.files[0]);
+
+        try {
+            const response = await fetch('/upload-audio', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.text();
+            document.body.innerHTML = result; // 顯示結果頁面
+        } catch (error) {
+            console.error("上傳失敗:", error);
+            alert("上傳過程發生錯誤");
+        }
+    }
+</script>
