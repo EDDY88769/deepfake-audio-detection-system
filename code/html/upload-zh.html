@@ -5,7 +5,7 @@
 
 <!-- JavaScript 部分 -->
 <script>
-    // 頁面一打開，就從網址抓 user 參數
+    // 從網址抓 user 參數
     window.onload = function() {
         const urlParams = new URLSearchParams(window.location.search);
         const user = urlParams.get('user');
