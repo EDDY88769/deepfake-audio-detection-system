@@ -47,7 +47,7 @@
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
 
-            // 1. 核心檢查：比對兩次密碼
+            // 比對兩次密碼
             if (password !== confirmPassword) {
                 alert("錯誤：兩次輸入的密碼不一致，請重新確認！");
                 document.getElementById('confirm-password').value = ""; // 清空欄位
@@ -57,7 +57,7 @@
 
             console.log("密碼驗證一致，正在傳送註冊資料...");
 
-            // 2. 驗證通過，透過 fetch 傳送給後端
+            // 透過 fetch 傳送給後端
             try {
                 const response = await fetch('/process-register', {
                     method: 'POST',
