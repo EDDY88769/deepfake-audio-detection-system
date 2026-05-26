@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FFFFFF">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="使用教學"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#333333"/>
+
+        <Button
+            android:id="@+id/btnCloseDialog"
+            android:layout_width="49dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:backgroundTint="#CCCCCC"
+            android:padding="0dp"
+            android:text="X"
+            android:textColor="#FFFFFF" />
+    </RelativeLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="222dp"
+        android:layout_marginTop="16dp"
+        android:lineSpacingExtra="8dp"
+        android:text="1. 登入您的帳號。\n2. 點擊「選取音檔」或使用「錄音」功能。\n3. 系統將自動上傳並辨識語音真偽。"
+        android:textColor="#666666"
+        android:textSize="16sp" />
+
+</LinearLayout>
