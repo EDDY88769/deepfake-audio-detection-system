@@ -1,3 +1,4 @@
+require('dotenv').config(); // 🔥 核心優化 1：啟動時優先載入 .env 隱藏設定檔
 const mariadb = require('mariadb');
 const { spawn } = require("child_process");
 const http = require("http");
@@ -5,12 +6,14 @@ const fs = require("fs");
 const path = require("path");
 const qs = require("querystring");
 const formidable = require('formidable');
+const bcrypt = require('bcrypt'); // 🔥 核心優化 2：引入業界標準的密碼雜湊安全套件
 
+// 連接池改用 process.env 讀取設定，程式碼內完全不出現明文密碼！
 const pool = mariadb.createPool({
-    host: '127.0.0.1',
-    user: 'web_user',
-    password: 'web_123',
-    database: 'my_system',
+    host: process.env.DB_HOST || '127.0.0.1',
+    user: process.env.DB_USER || 'web_user',
+    password: process.env.DB_PASSWORD, // 從環境變數安全抓取 web_123
+    database: process.env.DB_NAME || 'my_system',
     connectionLimit: 10
 });
 
@@ -68,16 +71,31 @@ const server = http.createServer(async (request, response) => {
                 const { username, password } = parsedBody;
                 response.setHeader("Content-Type", "text/html; charset=utf-8");
 
+                // --- 🛡️ 登入邏輯重構 ---
                 if (currentPath === "/process-login") {
                     let conn;
                     try {
                         conn = await pool.getConnection();
-                        const rows = await conn.query("SELECT * FROM users WHERE username = ? AND password = ?", [username, password]);
+                        // 1. 先單純用 username 把使用者撈出來
+                        const rows = await conn.query("SELECT * FROM users WHERE username = ?", [username]);
+                        
                         if (rows.length > 0) {
-                            response.statusCode = 302;
-                            response.setHeader("Location", `/login-success${redirectSelector}.html?user=${encodeURIComponent(username)}`);
-                            response.end();
+                            const dbUser = rows[0];
+                            // 2. 🔥 利用 bcrypt.compare 比對「前端輸入的明文密碼」與「資料庫內的加密雜湊值」
+                            const isMatch = await bcrypt.compare(password, dbUser.password);
+
+                            if (isMatch) {
+                                response.statusCode = 302;
+                                response.setHeader("Location", `/login-success${redirectSelector}.html?user=${encodeURIComponent(username)}`);
+                                response.end();
+                            } else {
+                                // 密碼錯誤
+                                response.statusCode = 302;
+                                response.setHeader("Location", `/login-fail${redirectSelector}.html`);
+                                response.end();
+                            }
                         } else {
+                            // 找不到此帳號
                             response.statusCode = 302;
                             response.setHeader("Location", `/login-fail${redirectSelector}.html`);
                             response.end();
@@ -89,6 +107,7 @@ const server = http.createServer(async (request, response) => {
                         if (conn) conn.release();
                     }
                 } 
+                // --- 🛡️ 註冊邏輯重構 ---
                 else if (currentPath === "/process-register") {
                     let conn;
                     try {
@@ -97,10 +116,16 @@ const server = http.createServer(async (request, response) => {
                         if (existing.length > 0) {
                             response.end("<h1>帳號已存在</h1><a href='/register.html'>返回重試</a>");
                         } else {
-                            await conn.query("INSERT INTO users (username, password) VALUES (?, ?)", [username, password]);
+                            // 🔥 核心安全機制：將密碼進行 Salt(加鹽) 並計算單向雜湊（強度 10）
+                            const saltRounds = 10;
+                            const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+                            // 將加密後的密碼（hashedPassword）存入資料庫，從此資料庫裡再也看不到明文！
+                            await conn.query("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword]);
                             response.end("<h1>註冊成功</h1><a href='/login.html'>前往登入</a>");
                         }
                     } catch (err) {
+                        console.error("註冊錯誤:", err);
                         response.end("<h1>註冊系統錯誤</h1>");
                     } finally {
                         if (conn) conn.release();
@@ -108,7 +133,7 @@ const server = http.createServer(async (request, response) => {
                 }
             });
         }
-        // ==================== 分支 2：查詢歷史紀錄  ====================
+        // ==================== 分支 2：查詢歷史紀錄 ====================
         else if (currentPath === "/get-records") {
             let body = [];
             request.on("data", (chunk) => body.push(chunk));
@@ -131,7 +156,7 @@ const server = http.createServer(async (request, response) => {
                             "SELECT filename, result, created_at FROM records WHERE username = ? ORDER BY created_at DESC", 
                             [username]
                         );
-                        
+
                         response.statusCode = 200;
                         response.end(JSON.stringify({ success: true, data: rows }));
                     } catch (dbErr) {
@@ -192,7 +217,7 @@ const server = http.createServer(async (request, response) => {
                         try {
                             conn = await pool.getConnection();
                             const userCheck = await conn.query("SELECT username FROM users WHERE username = ?", [username]);
-                            
+
                             if (userCheck.length === 0) {
                                 console.log(`[警告] 帳號 "${username}" 不在資料庫中！`);
                                 return response.end(`
@@ -207,7 +232,7 @@ const server = http.createServer(async (request, response) => {
                                 "INSERT INTO records (username, filename, result) VALUES (?, ?, ?)",
                                 [username, customFileName, recognition_text.trim() || "無辨識結果"]
                             );
-                            
+
                             response.end(`
                                 <!DOCTYPE html>
                                 <html lang="zh-TW">
@@ -261,7 +286,6 @@ const server = http.createServer(async (request, response) => {
                                             if (!username) return alert("無法查詢，帳號資訊遺失");
 
                                             try {
-                                                
                                                 const response = await fetch('/get-records', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -272,7 +296,7 @@ const server = http.createServer(async (request, response) => {
                     
                                                 if (result.success) {
                                                     const tableBody = document.getElementById('historyTableBody');
-                                                    tableBody.innerHTML = ''; 
+                                                    tableBody.innerHTML = '';
                             
                                                     if (result.data.length === 0) {
                                                         tableBody.innerHTML = '<tr><td colspan="3">目前尚無上傳紀錄</td></tr>';
@@ -284,7 +308,6 @@ const server = http.createServer(async (request, response) => {
                                                             tableBody.appendChild(tr);
                                                         });
                                                     }
-
                                                     document.getElementById('historyContainer').style.display = 'block';
                                                 } else {
                                                     alert("查詢失敗：" + result.message);
