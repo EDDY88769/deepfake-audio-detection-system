@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>登入成功</title>
+    <style>
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .history-section { margin-top: 30px; }
+    </style>
+</head>
+<body>
+
+    <h1>登入成功！</h1>
+    <p>您現在可以開始上傳您的音檔了。</p>
+
+    <div>
+        <input type="file" id="audioPicker" accept="audio/*">
+        <input type="hidden" id="username" value=""> 
+        <button type="button" onclick="upload()">開始上傳</button>
+    </div>
+
+    <div class="history-section">
+        <hr>
+        <h2>歷史辨識紀錄</h2>
+        <button type="button" onclick="fetchHistory()">檢視歷史紀錄</button>
+        
+        <div id="historyContainer" style="display: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>上傳時間</th>
+                        <th>原始檔案名稱</th> <th>辨識結果</th>
+                        <th>線上試聽</th>     </tr>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <hr>
+    <a href="index.html">回首頁</a>
+
+    <script>
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const user = urlParams.get('user');
+            if (user) {
+                document.getElementById('username').value = user;
+                console.log("成功將使用者填入隱藏欄位:", user);
+                // 可選：如果你希望一進網頁就自動載入歷史紀錄，可以解開下一行的註解
+                // fetchHistory();
+            } else {
+                alert("錯誤：偵測不到登入帳號，請重新登入！");
+            }
+        };
+
+        // 新增：向後端撈取歷史紀錄的函式
+        async function fetchHistory() {
+            const username = document.getElementById('username').value;
+            if (!username) return alert("無法查詢，帳號資訊遺失");
+
+            try {
+                const response = await fetch('/get-records', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `username=${encodeURIComponent(username)}`
+                });
+
+                const result = await response.json();
+                
+                // 💡 找到你網頁裡處理 /get-records 成功後的常規渲染段落，改成這樣：
+                if (result.success) {
+                    const tableBody = document.getElementById('historyTableBody');
+                    tableBody.innerHTML = '';
+
+                    if (result.data.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="4">目前尚無上傳紀錄</td></tr>';
+                    } else {
+                        result.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            // 轉換資料庫存的時間格式
+                            const date = new Date(row.created_at).toLocaleString('zh-TW');
+            
+                            // 💡 核心改動：
+                            // 1. 欄位 2 顯示使用者認得的：row.original_filename
+                            // 2. 欄位 4 放音訊播放器，路徑指向安全的：/view-audio/${row.filename}
+                            tr.innerHTML = `
+                            <td>${date}</td>
+                            <td>${row.original_filename || "未命名音檔"}</td>
+                            <td>${row.result}</td>
+                            <td>
+                                <audio controls src="/view-audio/${row.filename}" preload="none"></audio>
+                            </td>
+                            `;
+                            tableBody.appendChild(tr);
+                                });
+                        }
+                    document.getElementById('historyContainer').style.display = 'block';
+                } else {
+                    alert("查詢失敗：" + result.message);
+                }
+            } catch (error) {
+                console.error("發送查詢請求失敗:", error);
+                alert("連線失敗，無法取得歷史紀錄");
+            }
+        }
+
+        async function upload() {
+            const username = document.getElementById('username').value;
+            const fileInput = document.getElementById('audioPicker');
+
+            if (!username) return alert("錯誤：帳號資訊遺失，請重新登入");
+            if (fileInput.files.length === 0) return alert("請先選擇音檔");
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('audio', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/upload-audio', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.text();
+                document.open();
+                document.write(result);
+                document.close();
+            } catch (error) {
+                console.error("傳輸失敗:", error);
+                alert("連線發生問題");
+            }
+        }
+    </script>
+</body>
+</html>
