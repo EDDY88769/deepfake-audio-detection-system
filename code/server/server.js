@@ -1,4 +1,4 @@
-require('dotenv').config(); // 🔥 核心優化 1：啟動時優先載入 .env 隱藏設定檔
+require('dotenv').config(); 
 const mariadb = require('mariadb');
 const { spawn } = require("child_process");
 const http = require("http");
@@ -6,19 +6,18 @@ const fs = require("fs");
 const path = require("path");
 const qs = require("querystring");
 const formidable = require('formidable');
-const bcrypt = require('bcrypt'); // 🔥 核心優化 2：引入業界標準的密碼雜湊安全套件
+const bcrypt = require('bcrypt'); 
 
-// 連接池改用 process.env 讀取設定，程式碼內完全不出現明文密碼！
 const pool = mariadb.createPool({
     host: process.env.DB_HOST || '127.0.0.1',
     user: process.env.DB_USER || 'web_user',
-    password: process.env.DB_PASSWORD, // 從環境變數安全抓取 web_123
+    password: process.env.DB_PASSWORD, 
     database: process.env.DB_NAME || 'my_system',
     connectionLimit: 10
 });
 
 const port = 3000;
-const ip = "127.0.0.1";
+const ip = "0.0.0.0"; // 💡 優化：改為 0.0.0.0 配合 ngrok 與內網測試
 
 const sendResponse = (filename, statusCode, response) => {
     fs.readFile(`./html/${filename}`, (error, data) => {
@@ -42,6 +41,20 @@ const server = http.createServer(async (request, response) => {
     if (method === "GET") {
         const lang = requestUrl.searchParams.get("lang");
         let selector = (lang === "en") ? "" : "-zh";
+
+        // ------ 💡 新增：前端線上試聽靜態音訊路由 ------
+        if (pathname.startsWith('/view-audio/')) {
+            const filename = path.basename(pathname);
+            const filePath = path.join(__dirname, 'upload', filename);
+
+            if (fs.existsSync(filePath)) {
+                response.writeHead(200, { 'Content-Type': 'audio/wav' });
+                return fs.createReadStream(filePath).pipe(response);
+            } else {
+                response.writeHead(404, { 'Content-Type': 'text/plain' });
+                return response.end('File Not Found');
+            }
+        }
 
         if (pathname === "/") {
             return sendResponse(`index${selector}.html`, 200, response);
@@ -71,17 +84,14 @@ const server = http.createServer(async (request, response) => {
                 const { username, password } = parsedBody;
                 response.setHeader("Content-Type", "text/html; charset=utf-8");
 
-                // --- 🛡️ 登入邏輯重構 ---
                 if (currentPath === "/process-login") {
                     let conn;
                     try {
                         conn = await pool.getConnection();
-                        // 1. 先單純用 username 把使用者撈出來
                         const rows = await conn.query("SELECT * FROM users WHERE username = ?", [username]);
                         
                         if (rows.length > 0) {
                             const dbUser = rows[0];
-                            // 2. 🔥 利用 bcrypt.compare 比對「前端輸入的明文密碼」與「資料庫內的加密雜湊值」
                             const isMatch = await bcrypt.compare(password, dbUser.password);
 
                             if (isMatch) {
@@ -89,13 +99,11 @@ const server = http.createServer(async (request, response) => {
                                 response.setHeader("Location", `/login-success${redirectSelector}.html?user=${encodeURIComponent(username)}`);
                                 response.end();
                             } else {
-                                // 密碼錯誤
                                 response.statusCode = 302;
                                 response.setHeader("Location", `/login-fail${redirectSelector}.html`);
                                 response.end();
                             }
                         } else {
-                            // 找不到此帳號
                             response.statusCode = 302;
                             response.setHeader("Location", `/login-fail${redirectSelector}.html`);
                             response.end();
@@ -107,7 +115,6 @@ const server = http.createServer(async (request, response) => {
                         if (conn) conn.release();
                     }
                 } 
-                // --- 🛡️ 註冊邏輯重構 ---
                 else if (currentPath === "/process-register") {
                     let conn;
                     try {
@@ -116,11 +123,8 @@ const server = http.createServer(async (request, response) => {
                         if (existing.length > 0) {
                             response.end("<h1>帳號已存在</h1><a href='/register.html'>返回重試</a>");
                         } else {
-                            // 🔥 核心安全機制：將密碼進行 Salt(加鹽) 並計算單向雜湊（強度 10）
                             const saltRounds = 10;
                             const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-                            // 將加密後的密碼（hashedPassword）存入資料庫，從此資料庫裡再也看不到明文！
                             await conn.query("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword]);
                             response.end("<h1>註冊成功</h1><a href='/login.html'>前往登入</a>");
                         }
@@ -152,8 +156,9 @@ const server = http.createServer(async (request, response) => {
                     let conn;
                     try {
                         conn = await pool.getConnection();
+                        // 💡 查詢優化：撈出 original_filename 讓前端顯示
                         const rows = await conn.query(
-                            "SELECT filename, result, created_at FROM records WHERE username = ? ORDER BY created_at DESC", 
+                            "SELECT filename, original_filename, result, created_at FROM records WHERE username = ?", 
                             [username]
                         );
 
@@ -172,10 +177,11 @@ const server = http.createServer(async (request, response) => {
                 }
             });
         }
-        // ==================== 分支 3：上傳音檔 ====================
+        // ==================== 分支 3：上傳音檔（Bug 修正與結構理順） ====================
         else if (currentPath === "/upload-audio") {
             const form = new formidable.IncomingForm();
-            form.uploadDir = path.join(__dirname, "upload");
+            const uploadDir = path.join(__dirname, "upload");
+            form.uploadDir = uploadDir;
             form.keepExtensions = true;
 
             form.parse(request, async (err, fields, files) => {
@@ -188,10 +194,7 @@ const server = http.createServer(async (request, response) => {
                     username = String(raw || "").trim();
                 }
 
-                console.log(`[DEBUG] 收到上傳請求，帳號為: "${username}"`);
-
                 if (!username || username === "undefined") {
-                    console.error("!!! 攔截到錯誤帳號:", username);
                     return response.end(`<h1>錯誤：無法識別使用者身份</h1><p>請重新登入</p>`);
                 }
 
@@ -199,12 +202,15 @@ const server = http.createServer(async (request, response) => {
                     const audioFile = Array.isArray(files.audio) ? files.audio[0] : files.audio;
                     if (!audioFile) return response.end("<h1>找不到音檔</h1>");
 
-                    const oldPath = audioFile.filepath;
+                    // 1. 抓取前端原始檔名與生成安全檔名
+                    const originalName = audioFile.originalFilename || "unknown.wav"; 
                     const customFileName = `${username}_${Date.now()}.wav`;
-                    const newPath = path.join(__dirname, "upload", customFileName);
+                    const newPath = path.join(uploadDir, customFileName);
 
-                    fs.renameSync(oldPath, newPath);
+                    // 2. 搬移實體檔案
+                    fs.renameSync(audioFile.filepath, newPath);
 
+                    // 3. 呼叫 Python 子程序進行 AI 辨識
                     const pythonProcess = spawn('python', ["pretice.py", newPath], {
                         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
                     });
@@ -212,6 +218,7 @@ const server = http.createServer(async (request, response) => {
                     let recognition_text = "";
                     pythonProcess.stdout.on('data', (data) => { recognition_text += data.toString('utf8'); });
 
+                    // 4. 當 Python 辨識結束後，再執行寫入資料庫與回傳網頁
                     pythonProcess.on('close', async (code) => {
                         let conn;
                         try {
@@ -219,20 +226,16 @@ const server = http.createServer(async (request, response) => {
                             const userCheck = await conn.query("SELECT username FROM users WHERE username = ?", [username]);
 
                             if (userCheck.length === 0) {
-                                console.log(`[警告] 帳號 "${username}" 不在資料庫中！`);
-                                return response.end(`
-                                <h1>存檔失敗</h1>
-                                <p>原因：帳號 "${username}" 不在資料庫名單中。</p>
-                                <br>
-                                <a href="/login-success${redirectSelector}.html?user=${encodeURIComponent(username)}" style="padding: 10px 20px; background-color: #f44336; color: white; text-decoration: none; border-radius: 4px;">重新上傳</a>
-                                `);
+                                return response.end(`<h1>存檔失敗</h1><p>原因：帳號 "${username}" 不在資料庫中。</p>`);
                             }
 
+                            // 5. 🔥 關鍵：同步將安全檔名、原始檔名、辨識結果寫入 records 資料表
                             await conn.query(
-                                "INSERT INTO records (username, filename, result) VALUES (?, ?, ?)",
-                                [username, customFileName, recognition_text.trim() || "無辨識結果"]
+                                "INSERT INTO records (username, filename, original_filename, result) VALUES (?, ?, ?, ?)",
+                                [username, customFileName, originalName, recognition_text.trim() || "無辨識結果"]
                             );
 
+                            // 6. 渲染成功的 HTML 畫面給前端，內附前端歷史紀錄與試聽功能
                             response.end(`
                                 <!DOCTYPE html>
                                 <html lang="zh-TW">
@@ -240,42 +243,44 @@ const server = http.createServer(async (request, response) => {
                                     <meta charset="UTF-8">
                                     <title>辨識成功</title>
                                     <style>
-                                        body { font-family: sans-serif; padding: 20px; }
-                                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                                        body { font-family: sans-serif; padding: 20px; background: #fafafa; }
+                                        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+                                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
                                         th { background-color: #f2f2f2; }
                                         .history-section { margin-top: 40px; }
                                         .btn { padding: 10px 20px; color: white; text-decoration: none; border-radius: 4px; display: inline-block; cursor: pointer; border: none; font-size: 14px; }
                                         .btn-success { background-color: #4CAF50; margin-right: 10px; }
                                         .btn-primary { background-color: #008CBA; }
+                                        audio { width: 100%; max-width: 250px; }
                                     </style>
                                 </head>
                                 <body>
-                                    <h1>辨識成功</h1>
-                                    <p>帳號：${username}</p>
-                                    <div style="background: #f0f0f0; padding: 15px; margin: 10px 0;">${recognition_text}</div>
+                                    <h1>🎉 辨識成功</h1>
+                                    <p>操作帳號：<strong>${username}</strong></p>
+                                    <div style="background: #eef9ff; border-left: 5px solid #008CBA; padding: 15px; margin: 10px 0;">
+                                        <strong>AI 偵測輸出結果：</strong><br>${recognition_text}
+                                    </div>
                                     <br>
-        
                                     <a href="/login-success${redirectSelector}.html?user=${encodeURIComponent(username)}" class="btn btn-success">繼續上傳</a>
-                                    <a href='/' style="margin-right: 15px;">返回首頁</a>
-                            
+                                    <a href='/'>返回首頁</a>
+                                    
                                     <div class="history-section">
                                         <hr>
-                                        <h2>歷史辨識紀錄</h2>
+                                        <h2>📊 您的歷史辨識紀錄</h2>
                                         <input type="hidden" id="usernameHide" value="${username}">
-                                        <button type="button" class="btn btn-primary" onclick="fetchHistoryFromServer()">檢視歷史紀錄</button>
-            
+                                        <button type="button" class="btn btn-primary" onclick="fetchHistoryFromServer()">點此整理並檢視歷史紀錄</button>
+                            
                                         <div id="historyContainer" style="display: none;">
                                             <table>
                                                 <thead>
                                                     <tr>
                                                         <th>上傳時間</th>
-                                                        <th>檔案名稱</th>
+                                                        <th>原始檔案名稱</th>
                                                         <th>辨識結果</th>
+                                                        <th>線上試聽</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody id="historyTableBody">
-                                                    </tbody>
+                                                <tbody id="historyTableBody"></tbody>
                                             </table>
                                         </div>
                                     </div>
@@ -293,18 +298,27 @@ const server = http.createServer(async (request, response) => {
                                                 });
 
                                                 const result = await response.json();
-                    
+                                    
                                                 if (result.success) {
                                                     const tableBody = document.getElementById('historyTableBody');
                                                     tableBody.innerHTML = '';
-                            
+                                            
                                                     if (result.data.length === 0) {
-                                                        tableBody.innerHTML = '<tr><td colspan="3">目前尚無上傳紀錄</td></tr>';
+                                                        tableBody.innerHTML = '<tr><td colspan="4">目前尚無上傳紀錄</td></tr>';
                                                     } else {
                                                         result.data.forEach(row => {
                                                             const tr = document.createElement('tr');
                                                             const date = new Date(row.created_at).toLocaleString('zh-TW');
-                                                            tr.innerHTML = '<td>' + date + '</td><td>' + row.filename + '</td><td>' + row.result + '</td>';
+                                                            
+                                                            // 💡 關鍵優化：畫面上秀出 original_filename，但 <audio> 標籤呼叫安全的 filename
+                                                            tr.innerHTML = \`
+                                                                <td>\${date}</td>
+                                                                <td>\${row.original_filename || "未命名音檔"}</td>
+                                                                <td>\${row.result}</td>
+                                                                <td>
+                                                                    <audio controls src="/view-audio/\${row.filename}" preload="none"></audio>
+                                                                </td>
+                                                            \`;
                                                             tableBody.appendChild(tr);
                                                         });
                                                     }
