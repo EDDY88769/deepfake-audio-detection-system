@@ -14,9 +14,9 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:padding="24dp"
-            android:gravity="center_horizontal">
+            android:padding="24dp">
 
             <TextView
                 android:id="@+id/tvRegisterTitle"
@@ -34,25 +34,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="58dp"
                 android:layout_marginBottom="12dp"
-                android:hint="使用者名稱"
+                android:hint="使用者名稱(只能輸入英文和數字)"
                 android:inputType="textPersonName"
-                android:padding="12dp" />
-
-            <EditText
-                android:id="@+id/etRegEmail"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:layout_marginBottom="12dp"
-                android:hint="電子郵件"
-                android:inputType="textEmailAddress"
                 android:padding="12dp" />
 
             <EditText
                 android:id="@+id/etRegPassword"
                 android:layout_width="match_parent"
-                android:layout_height="58dp"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:hint="密碼"
+                android:hint="密碼(只能輸入英文和數字)"
                 android:inputType="textPassword"
                 android:padding="12dp" />
 
@@ -69,8 +60,8 @@
                 android:id="@+id/btnSubmitRegister"
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
-                android:text="立即註冊"
                 android:backgroundTint="#2196F3"
+                android:text="立即註冊"
                 android:textColor="#FFFFFF" />
 
         </LinearLayout>
