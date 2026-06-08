@@ -13,6 +13,7 @@ import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.text.InputFilter
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -72,6 +73,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val tvMainTitle: TextView = findViewById(R.id.tvTitle)
+        if (androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES) {
+            tvMainTitle.setTextColor(android.graphics.Color.WHITE)
+        }
+
         tvStatus = findViewById(R.id.tvStatus)
         etUsername = findViewById(R.id.etUsername)
         etPassword = findViewById(R.id.etPassword)
@@ -84,7 +90,24 @@ class MainActivity : AppCompatActivity() {
         val btnQuery: Button = findViewById(R.id.btnQuery)
         val btnRegister: Button = findViewById(R.id.btnRegister)
         val btnSettings: Button = findViewById(R.id.btnSettings)
-        //選擇檔案
+
+        btnHome.setBackgroundColor(android.graphics.Color.DKGRAY)
+        btnQuery.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnRegister.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnSettings.setBackgroundColor(android.graphics.Color.LTGRAY)
+        
+        val alphaNumericFilter = InputFilter { source, start, end, _, _, _ ->
+            for (i in start until end) {
+                if (!Character.isLetterOrDigit(source[i])) {
+                    return@InputFilter ""
+                }
+            }
+            null
+        }
+
+        etUsername.filters = arrayOf(alphaNumericFilter)
+        etPassword.filters = arrayOf(alphaNumericFilter)
+
         val pickFileLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let { selectedUri ->
                 currentAudioUri = selectedUri
@@ -101,7 +124,7 @@ class MainActivity : AppCompatActivity() {
 
                         runOnUiThread {
                             if (copySuccess && directFile.exists()) {
-                                currentAudioFile = directFile // 為了等一下播放功能可以用
+                                currentAudioFile = directFile 
                                 uploadAudioFile(directFile)
                             } else {
                                 updateStatus("讀取原始檔案失敗")
@@ -144,11 +167,11 @@ class MainActivity : AppCompatActivity() {
                 stopWavRecording(btnRecord)
             }
         }
-        //首頁按鈕功能
+
         btnHome.setOnClickListener {
             Toast.makeText(this, "已在首頁", Toast.LENGTH_SHORT).show()
         }
-        //查詢按鈕功能
+
         btnQuery.setOnClickListener {
             val intent = Intent(this, QueryActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
@@ -156,14 +179,14 @@ class MainActivity : AppCompatActivity() {
             }
             startActivity(intent)
         }
-        //註冊按鈕功能
+
         btnRegister.setOnClickListener {
             val intent = Intent(this, RegisterActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             }
             startActivity(intent)
         }
-        //設定按鈕功能
+
         btnSettings.setOnClickListener {
             val intent = Intent(this, SettingsActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
@@ -171,7 +194,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
     }
-    //取得檔名，主要是為了知道音檔的格式
+
     private fun getFileNameFromUri(uri: Uri): String {
         var result: String? = null
         if (uri.scheme == "content") {
@@ -194,7 +217,7 @@ class MainActivity : AppCompatActivity() {
         }
         return result ?: "unknown.mp3"
     }
-    
+
     private fun copyUriToFile(uri: Uri, destFile: File): Boolean {
         return try {
             contentResolver.openInputStream(uri)?.use { inputStream ->
@@ -212,7 +235,7 @@ class MainActivity : AppCompatActivity() {
             false
         }
     }
-    //登入函式
+
     private fun loginToServer() {
         updateStatus("正在登入...")
         val user = etUsername.text.toString().trim()
@@ -238,7 +261,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-    //錄音函式
+
     private fun startWavRecording(button: Button) {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             return
@@ -279,7 +302,7 @@ class MainActivity : AppCompatActivity() {
             updateStatus("錄音失敗: ${e.message}")
         }
     }
-    //停止錄音
+
     private fun stopWavRecording(button: Button) {
         try {
             isRecording = false
@@ -289,7 +312,7 @@ class MainActivity : AppCompatActivity() {
             updateStatus("停止錄音失敗")
         }
     }
-    //解碼並轉換成wav檔
+
     private fun decodeAudioToWav(uri: Uri, outputFile: File): Boolean {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
@@ -404,7 +427,7 @@ class MainActivity : AppCompatActivity() {
         fos.close()
         pcmFile.delete()
     }
-    //播放音檔
+
     private fun playCurrentAudio() {
         if (mediaPlayer?.isPlaying == true) {
             mediaPlayer?.stop()
@@ -436,7 +459,7 @@ class MainActivity : AppCompatActivity() {
             updateStatus("播放失敗: ${e.message}")
         }
     }
-    //上傳音檔
+
     private fun uploadAudioFile(file: File) {
         runOnUiThread { updateStatus("正在上傳...") }
 
@@ -463,7 +486,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-    //取得辨識結果
+
     private fun parseAndDisplayHtml(rawHtml: String) {
         var finalResult = "解析辨識結果失敗"
         try {
@@ -480,13 +503,13 @@ class MainActivity : AppCompatActivity() {
 
         updateStatus("檢測完成！\n$finalResult")
     }
-    
+
     override fun onStop() {
         super.onStop()
         mediaPlayer?.release()
         mediaPlayer = null
     }
-    //更新狀態
+
     private fun updateStatus(msg: String) {
         runOnUiThread { tvStatus.text = "目前狀態: $msg" }
     }
