@@ -2,12 +2,16 @@ package com.example.deepfakeaudiodetector
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputFilter
+import android.text.Spanned
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import okhttp3.*
 import java.io.IOException
+import android.graphics.Color
+import android.widget.TextView
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -17,9 +21,13 @@ class RegisterActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_register)
+        
+        val tvRegisterTitle: TextView = findViewById(R.id.tvRegisterTitle) 
+        if (androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES) {
+            tvRegisterTitle.setTextColor(android.graphics.Color.WHITE)
+        }
 
         val etRegUsername = findViewById<EditText>(R.id.etRegUsername)
-        val etRegEmail = findViewById<EditText>(R.id.etRegEmail)
         val etRegPassword = findViewById<EditText>(R.id.etRegPassword)
         val etRegConfirmPassword = findViewById<EditText>(R.id.etRegConfirmPassword)
         val btnSubmitRegister = findViewById<Button>(R.id.btnSubmitRegister)
@@ -29,14 +37,31 @@ class RegisterActivity : AppCompatActivity() {
         val btnRegister = findViewById<Button>(R.id.btnRegister)
         val btnSettings = findViewById<Button>(R.id.btnSettings)
 
+        btnHome.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnQuery.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnRegister.setBackgroundColor(android.graphics.Color.DKGRAY)
+        btnSettings.setBackgroundColor(android.graphics.Color.LTGRAY)
+
+        val alphaNumericFilter = InputFilter { source, start, end, _, _, _ ->
+            for (i in start until end) {
+                if (!Character.isLetterOrDigit(source[i])) {
+                    return@InputFilter ""
+                }
+            }
+            null
+        }
+
+        etRegUsername.filters = arrayOf(alphaNumericFilter)
+        etRegPassword.filters = arrayOf(alphaNumericFilter)
+        etRegConfirmPassword.filters = arrayOf(alphaNumericFilter)
+
         btnSubmitRegister.setOnClickListener {
             val username = etRegUsername.text.toString().trim()
-            val email = etRegEmail.text.toString().trim()
             val password = etRegPassword.text.toString()
             val confirmPassword = etRegConfirmPassword.text.toString()
 
             when {
-                username.isEmpty() || email.isEmpty() || password.isEmpty() -> {
+                username.isEmpty() || password.isEmpty() -> {
                     Toast.makeText(this, "所有欄位都必須填寫", Toast.LENGTH_SHORT).show()
                 }
                 password != confirmPassword -> {
