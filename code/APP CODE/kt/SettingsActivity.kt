@@ -1,8 +1,10 @@
 package com.example.deepfakeaudiodetector
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -15,11 +17,23 @@ class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
+        
+        val tvSettingsTitle: TextView = findViewById(R.id.settingtitle)
+        
+        val isNightMode = AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES
+        if (isNightMode) {
+            tvSettingsTitle.setTextColor(Color.WHITE)
+        }
 
         val btnHome: Button = findViewById(R.id.btnHome)
         val btnQuery: Button = findViewById(R.id.btnQuery)
         val btnRegister: Button = findViewById(R.id.btnRegister)
         val btnSettings: Button = findViewById(R.id.btnSettings)
+
+        btnHome.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnQuery.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnRegister.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnSettings.setBackgroundColor(android.graphics.Color.DKGRAY)
 
         val switchDarkMode: SwitchCompat = findViewById(R.id.switchDarkMode)
         val btnTutorial: Button = findViewById(R.id.btnTutorial)
@@ -68,7 +82,6 @@ class SettingsActivity : AppCompatActivity() {
         btnTutorial.setOnClickListener {
             showTutorialDialog()
         }
-
 
         val mainView = findViewById<android.view.View>(R.id.main)
         mainView?.let {
