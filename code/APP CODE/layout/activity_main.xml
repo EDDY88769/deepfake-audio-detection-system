@@ -31,7 +31,7 @@
             android:layout_height="58dp"
             android:layout_marginBottom="12dp"
             android:ems="10"
-            android:hint="請輸入帳號"
+            android:hint="請輸入使用者名稱(只能輸入英文和數字)"
             android:inputType="text" />
 
         <EditText
@@ -40,7 +40,7 @@
             android:layout_height="58dp"
             android:layout_marginBottom="24dp"
             android:ems="10"
-            android:hint="請輸入密碼"
+            android:hint="請輸入密碼(只能輸入英文和數字)"
             android:inputType="textPassword" />
 
         <Button
