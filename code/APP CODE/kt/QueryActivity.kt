@@ -30,6 +30,12 @@ class QueryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_query)
 
+        // 在 onCreate 內的 setContentView(R.layout.activity_query) 之後加入：
+        val tvQueryTitle: TextView = findViewById(R.id.tvQueryTitle) // 請改成你查詢頁標題的實體 ID
+        if (androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES) {
+            tvQueryTitle.setTextColor(android.graphics.Color.WHITE)
+        }
+
         currentUsername = intent.getStringExtra("EXTRA_USERNAME") ?: ""
 
         val btnFetchHistory: Button = findViewById(R.id.btnFetchHistory)
@@ -46,6 +52,11 @@ class QueryActivity : AppCompatActivity() {
         val btnRegister: Button = findViewById(R.id.btnRegister)
         val btnSettings: Button = findViewById(R.id.btnSettings)
 
+        btnHome.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnQuery.setBackgroundColor(android.graphics.Color.DKGRAY)
+        btnRegister.setBackgroundColor(android.graphics.Color.LTGRAY)
+        btnSettings.setBackgroundColor(android.graphics.Color.LTGRAY)
+
         btnFetchHistory.setOnClickListener {
             if (currentUsername.isEmpty()) {
                 Toast.makeText(this, "無有效帳號資訊，無法查詢", Toast.LENGTH_SHORT).show()
@@ -57,7 +68,7 @@ class QueryActivity : AppCompatActivity() {
         btnHome.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                putExtra("EXTRA_USERNAME", currentUsername) // 帶回首頁
+                putExtra("EXTRA_USERNAME", currentUsername) 
             }
             startActivity(intent)
         }
