@@ -30,8 +30,7 @@ class QueryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_query)
 
-        // 在 onCreate 內的 setContentView(R.layout.activity_query) 之後加入：
-        val tvQueryTitle: TextView = findViewById(R.id.tvQueryTitle) // 請改成你查詢頁標題的實體 ID
+        val tvQueryTitle: TextView = findViewById(R.id.tvQueryTitle) 
         if (androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES) {
             tvQueryTitle.setTextColor(android.graphics.Color.WHITE)
         }
