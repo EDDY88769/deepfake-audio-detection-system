@@ -31,10 +31,10 @@
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="222dp"
+        android:layout_height="628dp"
         android:layout_marginTop="16dp"
         android:lineSpacingExtra="8dp"
-        android:text="1. 登入您的帳號。\n2. 點擊「選取音檔」或使用「錄音」功能。\n3. 系統將自動上傳並辨識語音真偽。"
+        android:text="上傳音檔:\n 1. 登入您的帳號(如果沒有帳號的話請選擇註冊)。\n2. 點擊「選取音檔」或使用「錄音」功能。\n3. 系統將自動上傳並辨識語音真偽。\n錄音: \n1. 點擊開始錄音。 \n2. 錄音完畢後再次點擊系統將辨識語音真偽。"
         android:textColor="#666666"
         android:textSize="16sp" />
 
