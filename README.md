@@ -8,3 +8,6 @@
 1.開發一套深度偽造偵測系統。
 2.簡單且快速的分辨深度偽造語音。
 3.減少詐騙的成功率。
+
+## DEMO影片
+https://youtube.com/shorts/lBofR7pMxX4
